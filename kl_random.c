@@ -1,5 +1,5 @@
-#include <stdint.h>
 #include "kl_random.h"
+#include <stdint.h>
 
 uint32_t xorshift32_state_global;
 uint64_t xorshift64_state_global;
@@ -93,7 +93,7 @@ void random_init(uint64_t seed) {
 //      uint64_t xorshift64s_E(&xorshift64s_state_global);
 // Luckily, this macro is undefined after use.
 #define DEFINE_INPLACE_RANDOM_KL_ALGORITHM(type, name)                         \
-  type name ## _E() { return name(&name##_state_global); }
+  type name##_E() { return name(&name##_state_global); }
 
 DEFINE_INPLACE_RANDOM_KL_ALGORITHM(uint32_t, xorshift32)
 DEFINE_INPLACE_RANDOM_KL_ALGORITHM(uint64_t, xorshift64)
