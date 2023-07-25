@@ -1,8 +1,5 @@
 #include <stdint.h>
-
-struct xorshift128_state {
-  uint32_t x[4];
-};
+#include "kl_random.h"
 
 uint32_t xorshift32_state_global;
 uint64_t xorshift64_state_global;
@@ -105,6 +102,7 @@ DEFINE_INPLACE_RANDOM_KL_ALGORITHM(uint32_t, xorshift128)
 DEFINE_INPLACE_RANDOM_KL_ALGORITHM(uint64_t, splitmix64)
 #undef DEFINE_INPLACE_RANDOM_KL_ALGORITHM
 
+/*
 #include <stdio.h>
 int main() {
   random_init(0);
@@ -112,11 +110,12 @@ int main() {
   printf("%lu\n", xorshift64_E());
   printf("%u\n", xorshift128_E());
   printf("%lu\n", xorshift64s_E());
-  printf("%lu\n", glob_splitmix64_E());
+  printf("%lu\n", splitmix64_E());
 
   printf("%u\n", xorshift32_E());
   printf("%lu\n", xorshift64_E());
   printf("%u\n", xorshift128_E());
   printf("%lu\n", xorshift64s_E());
-  printf("%lu\n", glob_splitmix64_E());
+  printf("%lu\n", splitmix64_E());
 }
+*/

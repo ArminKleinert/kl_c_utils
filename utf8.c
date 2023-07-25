@@ -66,7 +66,7 @@ int utf8_from_codepoint(const uint32_t c, utf8_chr *buff) {
     return 4;
   }
   set_utf8_lib_error(INVALID_UNICODE_CODEPOINT);
-  return -1;
+  return 0;
 }
 
 // Get the number of leading 1s. These indicate the number of bytes used:
