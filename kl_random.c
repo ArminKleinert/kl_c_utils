@@ -93,10 +93,10 @@ void random_init(uint64_t seed) {
 // For example,
 //      DEFINE_INPLACE_RANDOM_KL_ALGORITHM(uint64_t, xorshift64s)
 // will create
-//      uint64_t glob_xorshift64s(&xorshift64s_state_global);
+//      uint64_t xorshift64s_E(&xorshift64s_state_global);
 // Luckily, this macro is undefined after use.
 #define DEFINE_INPLACE_RANDOM_KL_ALGORITHM(type, name)                         \
-  type glob_##name() { return name(&name##_state_global); }
+  type name ## _E() { return name(&name##_state_global); }
 
 DEFINE_INPLACE_RANDOM_KL_ALGORITHM(uint32_t, xorshift32)
 DEFINE_INPLACE_RANDOM_KL_ALGORITHM(uint64_t, xorshift64)
@@ -108,15 +108,15 @@ DEFINE_INPLACE_RANDOM_KL_ALGORITHM(uint64_t, splitmix64)
 #include <stdio.h>
 int main() {
   random_init(0);
-  printf("%u\n", glob_xorshift32());
-  printf("%lu\n", glob_xorshift64());
-  printf("%u\n", glob_xorshift128());
-  printf("%lu\n", glob_xorshift64s());
-  printf("%lu\n", glob_splitmix64());
+  printf("%u\n", xorshift32_E());
+  printf("%lu\n", xorshift64_E());
+  printf("%u\n", xorshift128_E());
+  printf("%lu\n", xorshift64s_E());
+  printf("%lu\n", glob_splitmix64_E());
 
-  printf("%u\n", glob_xorshift32());
-  printf("%lu\n", glob_xorshift64());
-  printf("%u\n", glob_xorshift128());
-  printf("%lu\n", glob_xorshift64s());
-  printf("%lu\n", glob_splitmix64());
+  printf("%u\n", xorshift32_E());
+  printf("%lu\n", xorshift64_E());
+  printf("%u\n", xorshift128_E());
+  printf("%lu\n", xorshift64s_E());
+  printf("%lu\n", glob_splitmix64_E());
 }
