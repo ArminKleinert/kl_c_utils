@@ -182,8 +182,7 @@ int main(int argc, char **args) {
   (void)argc;
   (void)args;
 
-  // printf("%u\n", cl1(0x80000000));
-  // return fromStdin();
+
   TEST_CASE("Get utf-8 bytes from codepoint", test_utf8_from_codepoint);
 
   return 0;
