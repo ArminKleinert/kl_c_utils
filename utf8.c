@@ -74,9 +74,11 @@ int utf8_from_codepoint(const uint32_t c, utf8_chr *buff) {
 // 2 (b[0] == 110X_XXXX) => 2 bytes
 // 3 (b[0] == 1110_XXXX) => 3 bytes
 // 4 (b[0] == 1111_0XXX) => 4 bytes
+// Returns a number above 4 on error.
 static int utf8_num_bytes_in_next_symbol(const utf8_chr b,
                                          const bool set_errno) {
   uint_fast8_t bitIndex;
+  // Find first position of a 0-bit in number, going from left to right.
   for (bitIndex = 7; bitIndex > 0 && (b & (1 << bitIndex)) != 0; bitIndex--) {
   }
 
@@ -85,26 +87,19 @@ static int utf8_num_bytes_in_next_symbol(const utf8_chr b,
     return 1;
 
   // Error-case: invalid bit-pattern
-  if (bitIndex == 1 || bitIndex > 4) {
+  if (bitIndex == 6 || bitIndex < 3) {
+    if (set_errno) {
+      set_utf8_lib_error(INVALID_UTF8_SYMBOL);
+    }
     return 0xFF;
-  }
-
-  if (set_errno) {
-    set_utf8_lib_error(INVALID_UTF8_SYMOL);
   }
 
   return 7 - bitIndex;
 }
 
-#include <stdio.h>
-
 // Checks whether a UTF-8 symbol (as byte pointer) is valid.
 bool utf8_char_valid(utf8_chr *b) {
-  printf("%d ", b[0]);
-  printf("%d ", b[1]);
-  printf("%d\n", b[2]);
   int len = utf8_num_bytes_in_next_symbol(*b, false);
-  printf("%d\n", len);
   if (len > 4)
     return false;
   if (len == 1)
@@ -124,13 +119,13 @@ uint32_t utf8_to_codepoint(utf8_chr *b) {
 
   // Error case: The symbol is not valid for utf-8.
   if (nbytes > 4) {
-    return 0xFF;
+    return UINT32_MAX;
   }
 
   uint32_t c = 0;
 
   // Only 1 byte (a normal ASCII char). Just return it.
-  if (nbytes == 0) {
+  if (nbytes == 1) {
     c = b[0];
     return c;
   }
@@ -150,8 +145,10 @@ uint32_t utf8_to_codepoint(utf8_chr *b) {
   for (uint_fast8_t i = 1; i < nbytes; i++) {
     c <<= 6;
 
-    if (!utf8_check_byte(b[i]))
-      set_utf8_lib_error(INVALID_UTF8_SYMOL);
+    if (!utf8_check_byte(b[i])){
+      set_utf8_lib_error(INVALID_UTF8_SYMBOL);
+      return UINT32_MAX;
+    }
 
     c += b[i] & lowest_6_bits;
   }
@@ -159,13 +156,14 @@ uint32_t utf8_to_codepoint(utf8_chr *b) {
   return c;
 }
 
-// 0xFFFFFFFF on error
+// Max long on error
 size_t utf8_strlen(utf8_chr *b) {
   size_t res = 0;
   for (size_t i = 0; b[i] != 0;) {
     int temp = utf8_num_bytes_in_next_symbol(b[i], true);
-    if (temp > 4)
-      return 0xFFFFFFFF;
+    if (temp > 4){
+      return SIZE_MAX;
+    }
     i += temp;
     res++;
   }

@@ -6,6 +6,10 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#ifndef WHERE_AM_I
+#define WHERE_AM_I() do{fprintf(stderr, "You are in function %s at line %d.\n", __FUNCTION__, __LINE__); }while(0)
+#endif
+
 typedef uint8_t utf8_chr;
 typedef utf8_chr *utf8_str;
 
@@ -14,7 +18,7 @@ typedef utf8_chr *utf8_str;
 //#define set_utf8_lib_error(n)  do { utf8_lib_error = n; } while (0)
 
 #define INVALID_UNICODE_CODEPOINT 1
-#define INVALID_UTF8_SYMOL 2
+#define INVALID_UTF8_SYMBOL 2
 
 int set_utf8_lib_error(int);
 int get_utf8_lib_error(void);
@@ -50,4 +54,5 @@ utf8_chr *utf8_strchr(utf8_chr *, uint32_t);
 
 // Checks whether a UTF-8 symbol (as byte pointer) is valid.
 bool utf8_string_valid(utf8_chr *);
-#endif
+
+#endif // KL_UTF8_H
