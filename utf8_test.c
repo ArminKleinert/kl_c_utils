@@ -7,7 +7,7 @@
 
 typedef uint64_t test_result;
 
-#define NUM_TOTAL_CASES(x) ((x) >> 32)
+#define NUM_TOTAL_CASES(x) (((x) >> 32) & 0xFFFFFFFF)
 #define NUM_SUCCESSES(x) ((x)&0xFFFFFFFF)
 #define TEST_RESULT(total, success) ((((uint64_t)(total)) << 32) | (success))
 
@@ -156,7 +156,7 @@ test_result test_utf8_from_codepoint(void) {
   clear_buff(buff, 4);
   n = utf8_from_codepoint(0x110000, &(buff[0]));
   err = get_utf8_lib_error();
-  RUN_ASSERT(n, 0, "%u");
+  RUN_ASSERT(n, UINT32_MAX, "%u");
   RUN_ASSERT(buff[0], 0x00, "%X");
   RUN_ASSERT(buff[1], 0x00, "%X");
   RUN_ASSERT(buff[2], 0x00, "%X");
@@ -168,7 +168,7 @@ test_result test_utf8_from_codepoint(void) {
   clear_buff(buff, 4);
   n = utf8_from_codepoint(0xFFFFFFFF, &(buff[0]));
   err = get_utf8_lib_error();
-  RUN_ASSERT(n, 0, "%u");
+  RUN_ASSERT(n, UINT32_MAX, "%u");
   RUN_ASSERT(buff[0], 0x00, "%X");
   RUN_ASSERT(buff[1], 0x00, "%X");
   RUN_ASSERT(buff[2], 0x00, "%X");
@@ -186,7 +186,7 @@ test_result test_utf8_to_codepoint(void) {
   uint32_t total_cases = 0;
   uint32_t successes = 0;
   int err;
- 
+
   // Empty utf8 char
   clear_buff(buff, 4);
   n = utf8_to_codepoint(&(buff[0]));
@@ -198,7 +198,7 @@ test_result test_utf8_to_codepoint(void) {
   RUN_ASSERT(buff[3], 0, "%X");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // Single byte (ASCII) utf8 char
   clear_buff(buff, 4);
   buff[0] = 'A';
@@ -211,12 +211,12 @@ test_result test_utf8_to_codepoint(void) {
   RUN_ASSERT(buff[3], 0, "%X");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // Dagger symbol (3 bytes)
   clear_buff(buff, 4);
-  buff[0]= 0xE2;
-  buff[1]= 0x80;
-  buff[2]= 0xA0;
+  buff[0] = 0xE2;
+  buff[1] = 0x80;
+  buff[2] = 0xA0;
   n = utf8_to_codepoint(&(buff[0]));
   err = get_utf8_lib_error();
   RUN_ASSERT(n, 0x2020, "%u");
@@ -226,29 +226,29 @@ test_result test_utf8_to_codepoint(void) {
   RUN_ASSERT(buff[3], 0x0, "%X");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // Largest possible codepoint
   clear_buff(buff, 4);
-  buff[0]= 0xF4;
-  buff[1]= 0x8F;
-  buff[2]= 0xBF;
-  buff[3]= 0xBF;
+  buff[0] = 0xF4;
+  buff[1] = 0x8F;
+  buff[2] = 0xBF;
+  buff[3] = 0xBF;
   n = utf8_to_codepoint(&(buff[0]));
   err = get_utf8_lib_error();
-  RUN_ASSERT(n,0x10FFFF, "%u");
+  RUN_ASSERT(n, 0x10FFFF, "%u");
   RUN_ASSERT(buff[0], 0xF4, "%X");
   RUN_ASSERT(buff[1], 0x8F, "%X");
   RUN_ASSERT(buff[2], 0xBF, "%X");
   RUN_ASSERT(buff[3], 0xBF, "%X");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // Error case: Larger than possible range. (first byte illegal)
   clear_buff(buff, 4);
-  buff[0]= 0xFF;
-  buff[1]= 0x00;
-  buff[2]= 0x00;
-  buff[3]= 0x00;
+  buff[0] = 0xFF;
+  buff[1] = 0x00;
+  buff[2] = 0x00;
+  buff[3] = 0x00;
   n = utf8_to_codepoint(&(buff[0]));
   err = get_utf8_lib_error();
   RUN_ASSERT(n, ~((uint32_t)0), "%u");
@@ -258,13 +258,14 @@ test_result test_utf8_to_codepoint(void) {
   RUN_ASSERT(buff[3], 0x00, "%X");
   RUN_ASSERT(err, INVALID_UTF8_SYMBOL, "%d");
   set_utf8_lib_error(0);
- 
-  // Error case: Illegal codepoint. (first byte is legal, but second byte is not)
+
+  // Error case: Illegal codepoint. (first byte is legal, but second byte is
+  // not)
   clear_buff(buff, 4);
-  buff[0]= 0xF0;
-  buff[1]= 0xF0;
-  buff[2]= 0x00;
-  buff[3]= 0x00;
+  buff[0] = 0xF0;
+  buff[1] = 0xF0;
+  buff[2] = 0x00;
+  buff[3] = 0x00;
   n = utf8_to_codepoint(&(buff[0]));
   err = get_utf8_lib_error();
   RUN_ASSERT(n, UINT32_MAX, "%u");
@@ -274,10 +275,10 @@ test_result test_utf8_to_codepoint(void) {
   RUN_ASSERT(buff[3], 0x00, "%X");
   RUN_ASSERT(err, INVALID_UTF8_SYMBOL, "%d");
   set_utf8_lib_error(0);
- 
+
   return TEST_RESULT(total_cases, successes);
 }
- 
+
 test_result test_utf8_char_valid(void) {
   set_utf8_lib_error(0);
   utf8_chr buff[4];
@@ -285,7 +286,7 @@ test_result test_utf8_char_valid(void) {
   uint32_t total_cases = 0;
   uint32_t successes = 0;
   int err;
- 
+
   // Empty utf8 char
   clear_buff(buff, 4);
   res = utf8_char_valid(&(buff[0]));
@@ -293,7 +294,7 @@ test_result test_utf8_char_valid(void) {
   RUN_ASSERT(res, true, "%u");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // Single byte (ASCII) utf8 char
   clear_buff(buff, 4);
   buff[0] = 'A';
@@ -302,7 +303,7 @@ test_result test_utf8_char_valid(void) {
   RUN_ASSERT(res, true, "%u");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // First byte implies a single-byte char, second byte is not legal.
   // Since the second char is never checked, the char is technically
   // valid.
@@ -314,7 +315,7 @@ test_result test_utf8_char_valid(void) {
   RUN_ASSERT(res, true, "%u");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // Completely invalid
   clear_buff(buff, 4);
   buff[0] = 0xFF;
@@ -326,10 +327,10 @@ test_result test_utf8_char_valid(void) {
   RUN_ASSERT(res, false, "%u");
   RUN_ASSERT(err, 0, "%d"); // Does not set error
   set_utf8_lib_error(0);
- 
+
   return TEST_RESULT(total_cases, successes);
 }
- 
+
 test_result test_utf8_strlen(void) {
   set_utf8_lib_error(0);
   utf8_chr buff[17];
@@ -337,7 +338,7 @@ test_result test_utf8_strlen(void) {
   uint32_t total_cases = 0;
   uint32_t successes = 0;
   int err;
- 
+
   // Empty utf8 string has length 0
   clear_buff(buff, 17);
   n = utf8_strlen(&(buff[0]));
@@ -345,7 +346,7 @@ test_result test_utf8_strlen(void) {
   RUN_ASSERT(n, (size_t)0, "%lu");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // ASCII string
   clear_buff(buff, 17);
   utf8_chr *hello_world_str = utf8_reinterpret_string("Hello World!");
@@ -354,70 +355,232 @@ test_result test_utf8_strlen(void) {
   RUN_ASSERT(n, (size_t)12, "%lu");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // Single utf8 symbol followed by 0
   clear_buff(buff, 17);
-  buff[0]= 0xE2;
-  buff[1]= 0x80;
-  buff[2]= 0xA0;
+  buff[0] = 0xE2;
+  buff[1] = 0x80;
+  buff[2] = 0xA0;
   n = utf8_strlen(&(buff[0]));
   err = get_utf8_lib_error();
   RUN_ASSERT(n, (size_t)1, "%lu");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
-  
-  //11001110 10111011
- 
-  // Single utf8 symbol (3 bytes) followed by 3 ASCII chars followed by utf8 symbol (2 bytes) followed by 0
-  // Expected length is 5.
+
+  // 11001110 10111011
+
+  // Single utf8 symbol (3 bytes) followed by 3 ASCII chars followed by utf8
+  // symbol (2 bytes) followed by 0 Expected length is 5.
   clear_buff(buff, 17);
-  buff[0]= 0xE2;
-  buff[1]= 0x80;
-  buff[2]= 0xA0;
-  buff[3]= 'A';
-  buff[4]= 'B';
-  buff[5]= 'C';
-  buff[6]= 0xCE;
-  buff[7]= 0xBB;
+  buff[0] = 0xE2;
+  buff[1] = 0x80;
+  buff[2] = 0xA0;
+  buff[3] = 'A';
+  buff[4] = 'B';
+  buff[5] = 'C';
+  buff[6] = 0xCE;
+  buff[7] = 0xBB;
   n = utf8_strlen(&(buff[0]));
   err = get_utf8_lib_error();
   RUN_ASSERT(n, (size_t)5, "%lu");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
-  
+
   clear_buff(buff, 17);
-  buff[0]= 0xCE;
-  buff[1]= 0xBB;
+  buff[0] = 0xCE;
+  buff[1] = 0xBB;
   n = utf8_strlen(&(buff[0]));
   err = get_utf8_lib_error();
   RUN_ASSERT(n, (size_t)1, "%lu");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // Largest possible codepoint (still length 1)
   clear_buff(buff, 4);
-  buff[0]= 0xF4;
-  buff[1]= 0x8F;
-  buff[2]= 0xBF;
-  buff[3]= 0xBF;
+  buff[0] = 0xF4;
+  buff[1] = 0x8F;
+  buff[2] = 0xBF;
+  buff[3] = 0xBF;
   n = utf8_strlen(&(buff[0]));
   err = get_utf8_lib_error();
   RUN_ASSERT(n, (size_t)1, "%zu");
   RUN_ASSERT(err, 0, "%d");
   set_utf8_lib_error(0);
- 
+
   // Illegal symbol (maximum
   clear_buff(buff, 4);
-  buff[0]= 0xFF;
-  buff[1]= 0xFF;
-  buff[2]= 0xFF;
-  buff[3]= 0xFF;
+  buff[0] = 0xFF;
+  buff[1] = 0xFF;
+  buff[2] = 0xFF;
+  buff[3] = 0xFF;
   n = utf8_strlen(&(buff[0]));
   err = get_utf8_lib_error();
   RUN_ASSERT(n, SIZE_MAX, "%zu");
   RUN_ASSERT(err, INVALID_UTF8_SYMBOL, "%d");
   set_utf8_lib_error(0);
- 
+
+  return TEST_RESULT(total_cases, successes);
+}
+
+
+
+test_result test_utf8_strchr(void) {
+  set_utf8_lib_error(0);
+  utf8_chr buff[17];
+  utf8_chr *buff_ptr = &(buff[0]);
+  utf8_chr *pos;
+  uint32_t total_cases = 0;
+  uint32_t successes = 0;
+  int err;
+
+  // Empty utf8 string does not contain 'A'.
+  clear_buff(buff, 17);
+  pos = utf8_strchr(buff_ptr, 'A');
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, NULL, "%p");
+  RUN_ASSERT(err, 0, "%d");
+  set_utf8_lib_error(0);
+
+  // Found at first byte
+  clear_buff(buff, 17);
+  buff[0] = 'A';
+  pos = utf8_strchr(buff_ptr, 'A');
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, (void*)buff_ptr, "%p");
+  RUN_ASSERT(err, 0, "%d");
+  set_utf8_lib_error(0);
+
+  // Found later
+  clear_buff(buff, 17);
+  buff[0] = 'Y'; buff[1] = 'e';buff[2] = 'a';buff[3] = 'h';
+  pos = utf8_strchr(buff_ptr, 'a');
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, (void*)(buff_ptr+2), "%p");
+  RUN_ASSERT(err, 0, "%d");
+  set_utf8_lib_error(0);
+
+  // Not found, but length>0
+  clear_buff(buff, 17);
+  buff[0] = 'Y'; buff[1] = 'e';buff[2] = 'a';buff[3] = 'h';
+  pos = utf8_strchr(buff_ptr, 'Z');
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, NULL, "%p");
+  RUN_ASSERT(err, 0, "%d");
+  set_utf8_lib_error(0);
+
+  // Found, but not ASCII
+  clear_buff(buff, 17);
+  buff[0] = 'Y'; buff[1] = 'e';
+  buff[2] = 0xE2;
+  buff[3] = 0x80;
+  buff[4] = 0xA0;
+  pos = utf8_strchr(buff_ptr, 0x2020);
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, (void*)(buff_ptr+2), "%p");
+  RUN_ASSERT(err, 0, "%d");
+  set_utf8_lib_error(0);
+
+  // Invalid codepoint
+  clear_buff(buff, 17);
+  buff[0] = 'Y'; buff[1] = 'e';
+  pos = utf8_strchr(buff_ptr, UINT32_MAX);
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, NULL, "%p");
+  RUN_ASSERT(err, INVALID_UNICODE_CODEPOINT, "%d");
+  set_utf8_lib_error(0);
+
+  // Invalid string
+  clear_buff(buff, 17);
+  buff[0] = 0xFF;
+  buff[1] = 0x8F;
+  buff[2] = 0xBF;
+  buff[3] = 0xBF;
+  pos = utf8_strchr(buff_ptr, 'A');
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, NULL, "%p");
+  RUN_ASSERT(err, INVALID_UTF8_SYMBOL, "%d");
+  set_utf8_lib_error(0);
+
+  return TEST_RESULT(total_cases, successes);
+}
+
+test_result test_utf8_strchr2(void) {
+  set_utf8_lib_error(0);
+  utf8_chr buff[17];
+  utf8_chr *buff_ptr = &(buff[0]);
+  utf8_chr *pos;
+  uint32_t total_cases = 0;
+  uint32_t successes = 0;
+  int err;
+
+  // Empty utf8 string does not contain 'A'.
+  clear_buff(buff, 17);
+  pos = utf8_strchr2(buff_ptr, 'A');
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, NULL, "%p");
+  RUN_ASSERT(err, 0, "%d");
+  set_utf8_lib_error(0);
+
+  // Found at first byte
+  clear_buff(buff, 17);
+  buff[0] = 'A';
+  pos = utf8_strchr2(buff_ptr, 'A');
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, (void*)buff_ptr, "%p");
+  RUN_ASSERT(err, 0, "%d");
+  set_utf8_lib_error(0);
+
+  // Found later
+  clear_buff(buff, 17);
+  buff[0] = 'Y'; buff[1] = 'e';buff[2] = 'a';buff[3] = 'h';
+  pos = utf8_strchr2(buff_ptr, 'a');
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, (void*)(buff_ptr+2), "%p");
+  RUN_ASSERT(err, 0, "%d");
+  set_utf8_lib_error(0);
+
+  // Not found, but length>0
+  clear_buff(buff, 17);
+  buff[0] = 'Y'; buff[1] = 'e';buff[2] = 'a';buff[3] = 'h';
+  pos = utf8_strchr2(buff_ptr, 'Z');
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, NULL, "%p");
+  RUN_ASSERT(err, 0, "%d");
+  set_utf8_lib_error(0);
+
+  // Found, but not ASCII
+  clear_buff(buff, 17);
+  buff[0] = 'Y'; buff[1] = 'e';
+  buff[2] = 0xE2;
+  buff[3] = 0x80;
+  buff[4] = 0xA0;
+  pos = utf8_strchr2(buff_ptr, 0x2020);
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, (void*)(buff_ptr+2), "%p");
+  RUN_ASSERT(err, 0, "%d");
+  set_utf8_lib_error(0);
+
+  // Invalid codepoint
+  clear_buff(buff, 17);
+  buff[0] = 'Y'; buff[1] = 'e';
+  pos = utf8_strchr2(buff_ptr, UINT32_MAX);
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, NULL, "%p");
+  RUN_ASSERT(err, INVALID_UNICODE_CODEPOINT, "%d");
+  set_utf8_lib_error(0);
+
+  // Invalid string
+  clear_buff(buff, 17);
+  buff[0] = 0xFF;
+  buff[1] = 0x8F;
+  buff[2] = 0xBF;
+  buff[3] = 0xBF;
+  pos = utf8_strchr2(buff_ptr, 'A');
+  err = get_utf8_lib_error();
+  RUN_ASSERT((void*)pos, NULL, "%p");
+  RUN_ASSERT(err, INVALID_UTF8_SYMBOL, "%d");
+  set_utf8_lib_error(0);
+
   return TEST_RESULT(total_cases, successes);
 }
 
@@ -429,6 +592,9 @@ int main(int argc, char **args) {
   TEST_CASE("Get codepoint from utf-8 bytes", test_utf8_to_codepoint);
   TEST_CASE("Check utf-8 bytes for validity", test_utf8_char_valid);
   TEST_CASE("Test utf-8 string length      ", test_utf8_strlen);
+
+  TEST_CASE("Test test_utf8_strchr         ", test_utf8_strchr);
+  TEST_CASE("Test test_utf8_strchr2        ", test_utf8_strchr2);
 
   return 0;
 }

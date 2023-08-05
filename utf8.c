@@ -7,13 +7,22 @@
 
 int _utf8_lib_error = 0;
 
-inline int set_utf8_lib_error(int code) {
+ int set_utf8_lib_error(const int code) {
   _utf8_lib_error = code;
   return _utf8_lib_error;
 }
 
-inline int get_utf8_lib_error(void) { return _utf8_lib_error; }
+ int get_utf8_lib_error(void) { return _utf8_lib_error; }
 
+/**
+ * Safely casts char pointer to utf8_chr pointer.
+ * This function does not check for NULL or any other problems. Does not set
+ * errno or utf8_lib_error. The output points to the same position in memory as
+ * the input. The purpose is to make the compiler stop worrying.
+ * @param s The pointer.
+ * @return The same pointer, but to utf8_chr.
+ * @see utf8_reinterpret_as_string
+ */
 inline utf8_chr *utf8_reinterpret_string(const char *s) {
   union {
     utf8_chr *u8;
@@ -22,6 +31,15 @@ inline utf8_chr *utf8_reinterpret_string(const char *s) {
   return p.u8;
 }
 
+/**
+ * The inverse function to utf8_reinterpret_string.
+ * Also does not check for NULL or other problems. Does not set errno or
+ * utf8_lib_error. The output points to the same position in memory as the
+ * input.
+ * @param s Pointer to utf8_chr
+ * @return Pointer to char
+ * @see utf8_reinterpret_string
+ */
 inline char *utf8_reinterpret_as_string(const utf8_chr *s) {
   union {
     const utf8_chr *u8;
@@ -30,6 +48,21 @@ inline char *utf8_reinterpret_as_string(const utf8_chr *s) {
   return p.c;
 }
 
+inline bool memeq(const utf8_chr *c1, const utf8_chr *c2, const int len) {
+  for (int temp = 0; temp < len; temp ++) {
+    if (c1[temp] != c2[temp]) return false;
+  }
+  return true;
+}
+
+/**
+ * Take a unicode codepoint and return the number of bytes needed to represent
+ * it as a utf-8 char. This function does not set utf8_lib_error. The output
+ * range is 1..4 for valid inputs or a number below 1 for errornous inputs.
+ * This function will not set utf8_lib_error or errno.
+ * @param c The codepoints.
+ * @return Number of bytes required for a conversion into an utf-8 symbol.
+ */
 int utf8_codepoint_bytes(const uint32_t c) {
   if (c < 0x80) {
     return 1;
@@ -40,11 +73,12 @@ int utf8_codepoint_bytes(const uint32_t c) {
   } else if (c < 0x110000) {
     return 4;
   }
-  return 0;
+  return -1;
 }
 
 // Take a unicode code point and stuff it into a byte-array of 4 bytes.
 // Also, does some conversion into the correct format.
+// Returns a number below 1 on error.
 int utf8_from_codepoint(const uint32_t c, utf8_chr *buff) {
   if (c < 0x80) {
     buff[0] = ((c >> 0) & 0x7F) | 0x00;
@@ -66,7 +100,7 @@ int utf8_from_codepoint(const uint32_t c, utf8_chr *buff) {
     return 4;
   }
   set_utf8_lib_error(INVALID_UNICODE_CODEPOINT);
-  return 0;
+  return -1;
 }
 
 // Get the number of leading 1s. These indicate the number of bytes used:
@@ -98,7 +132,7 @@ static int utf8_num_bytes_in_next_symbol(const utf8_chr b,
 }
 
 // Checks whether a UTF-8 symbol (as byte pointer) is valid.
-bool utf8_char_valid(utf8_chr *b) {
+bool utf8_char_valid(const utf8_chr *b) {
   int len = utf8_num_bytes_in_next_symbol(*b, false);
   if (len > 4)
     return false;
@@ -113,7 +147,7 @@ bool utf8_char_valid(utf8_chr *b) {
 
 // Convert UTF-8 byte array into a unicode codepoint.
 // Returns MAX_INT (~0) on error.
-uint32_t utf8_to_codepoint(utf8_chr *b) {
+uint32_t utf8_to_codepoint(const utf8_chr *b) {
   // Calculate the number of bytes the symbol has.
   const uint_fast8_t nbytes = utf8_num_bytes_in_next_symbol(b[0], true);
 
@@ -145,7 +179,7 @@ uint32_t utf8_to_codepoint(utf8_chr *b) {
   for (uint_fast8_t i = 1; i < nbytes; i++) {
     c <<= 6;
 
-    if (!utf8_check_byte(b[i])){
+    if (!utf8_check_byte(b[i])) {
       set_utf8_lib_error(INVALID_UTF8_SYMBOL);
       return UINT32_MAX;
     }
@@ -157,11 +191,11 @@ uint32_t utf8_to_codepoint(utf8_chr *b) {
 }
 
 // Max long on error
-size_t utf8_strlen(utf8_chr *b) {
+size_t utf8_strlen(const utf8_chr *b) {
   size_t res = 0;
   for (size_t i = 0; b[i] != 0;) {
     int temp = utf8_num_bytes_in_next_symbol(b[i], true);
-    if (temp > 4){
+    if (temp > 4) {
       return SIZE_MAX;
     }
     i += temp;
@@ -171,7 +205,7 @@ size_t utf8_strlen(utf8_chr *b) {
 }
 
 // 0x7FFF on error
-int utf8_str_cmp(utf8_chr *xs, utf8_chr *ys) {
+int utf8_str_cmp(const utf8_chr *xs, const utf8_chr *ys) {
   // if the two strings are at the same memory address, we don't need any more
   // complex calculations.
   if (xs == ys)
@@ -206,28 +240,67 @@ int utf8_str_cmp(utf8_chr *xs, utf8_chr *ys) {
   return 0;
 }
 
-utf8_chr *utf8_strchr(utf8_chr *s, uint32_t codePt) {
-  int codePtBytes = utf8_codepoint_bytes(codePt);
+/**
+ * Try to find codepoint in utf-8 string.
+ * If the codepoint is not in the string, returns NULL.
+ * If the codepoint was invalid (greater than UNICODE_MAX_CODEPT), NULL is
+ * returned and utf8_lib_error is set to INVALID_UNICODE_CODEPOINT. If the
+ * string is invalid before the codepoint is found, utf8_lib_error is set to
+ * INVALID_UTF8_SYMBOL and NULL is returned.
+ * As this function does not check the validity of the entire string in general.
+ *
+ * s = "Yeaye";
+ * utf8_strchr(s, 'a') == s + 2;
+ * utf8_strchr(s, 'Z') == NULL; // Not found
+ * utf8_strchr(s, 0x110000) == NULL // Invalid codepoint. Also,
+ *                                  // utf8_lib_error was set here.
+ *
+ * s[3] = 0xFF; // Illegal utf8 byte.
+ * utf8_strchr(s, 'a') == s+2; // 'a' was found, no extra work.
+ * utf8_strchr(s, 'Z') == NULL; // Also set utf8_lib_error because s is invalid.
+ *
+ * @return A pointer to the first position of the codepoint in the string or
+ * NULL if it was not found.
+ */
+utf8_chr *utf8_strchr(utf8_chr *s, const uint32_t codePt) {
+  utf8_chr inp[4];
+  const int codePtBytes = utf8_from_codepoint(codePt, &(inp[0]));
+  if (codePtBytes < 1) {
+    // Error case. INVALID_UNICODE_CODEPOINT was already set at this point.
+    return NULL;
+  }
 
   for (size_t i = 0; s[i] != 0;) {
+    // Get number of bytes for next symbol
     int temp = utf8_num_bytes_in_next_symbol(s[i], true);
-    if (temp > 4)
+    if (temp > 4) {
+      // Error: Invalid symbol (invalid first byte of symbol)
+      // If this occurs, utf8_lib_error was already set.
       return NULL;
-    if (temp == codePtBytes && utf8_to_codepoint(s + i) == codePt) {
-      return s + i;
     }
+
+    // Check if the number of bytes of the next symbol and the codepoint is the
+    // same. If not, just progress.
+    if (temp == codePtBytes && memeq(s+i, &(inp[0]), codePtBytes)){
+        return s + i;
+
+    }
+
+    // Jump ahead. temp can never be 0 or negative, so this is alright. (see
+    // utf8_num_bytes_in_next_symbol)
     i += temp;
   }
 
-  return NULL;
+  return NULL; // Not found.
 }
 
 // Checks whether a UTF-8 symbol (as byte pointer) is valid.
-bool utf8_string_valid(utf8_chr *b) {
+bool utf8_string_valid(const utf8_chr *b) {
   for (size_t i = 0; b[i] != 0;) {
     int temp = utf8_num_bytes_in_next_symbol(b[i], false);
-    if (temp > 4)
+    if (temp > 4) {
       return false;
+    }
     i += temp;
   }
   return true;
